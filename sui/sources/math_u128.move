@@ -3,10 +3,13 @@
 /// @title math_u128
 /// @dev Standard math utilities missing in the Move language (for `u128`).
 module movemate::math_u128 {
+    use movemate::u256::{Self};
+
     const ROUNDING_DOWN: u8 = 0; // Toward negative infinity
     const ROUNDING_UP: u8 = 0; // Toward infinity
     const ROUNDING_ZERO: u8 = 0; // Toward zero
     const SCALAR: u128 = 1 << 32;
+
 
     /// @dev Returns the largest of two numbers.
     public fun max(a: u128, b: u128): u128 {
@@ -97,6 +100,19 @@ module movemate::math_u128 {
         result = (result + a / result) >> 1;
         result = (result + a / result) >> 1;
         min(result, a / result)
+    }
+
+    /// @notice Calculates `a * b / c` but converts to `U128`s for calculations to avoid overflow.
+    public fun mul_div(a: u128, b: u128, c: u128): u128 {
+        u256::as_u128(
+            u256::div(
+                u256::mul(
+                    u256::from_u128(a),
+                    u256::from_u128(b)
+                ),
+                u256::from_u128(c)
+            )
+        )
     }
 
     /// @notice Calculates sqrt(a), following the selected rounding direction.

@@ -5,14 +5,24 @@
 module movemate::fixed_point64 {
     use std::errors;
     use movemate::u256::{Self};
+    use movemate::math_u128::{Self};
 
-    use std::debug;
+    //use std::debug;
 
     /// @dev max value a `u128` can take.
     const U128_MAX: u128 = 340282366920938463463374607431768211455;
 
     /// @dev max value a `u64` can take.
     const U64_MAX: u128 = 18446744073709551615;
+
+    /// @dev 
+    const RESOLUTION: u8 = 64;
+
+    /// @dev 000000000000000000FFFFFFFFFFFFFFFF captures the 64 lower bits 
+    const LOWER_MASK: u128 = 0xFFFFFFFFFFFFFFFF;
+
+    /// @dev 
+    const Q64: u128 = 0x10000000000000000; // 2^64
 
     /// @dev demoninator provided was zero
     const EDENOMINATOR:u64 = 0;
@@ -72,14 +82,50 @@ module movemate::fixed_point64 {
 
     /// @notice multiply a `FixedPoint64` by another `FixedPoint64`.
     public fun multiply(a: FixedPoint64, b: FixedPoint64): FixedPoint64 {
-        let unscaled_product = u256::mul(
-            u256::from_u128(a.value),
-            u256::from_u128(b.value)
-        );
+        if (a.value == 0 || b.value == 0) {
+            return FixedPoint64 { value: 0 }
+        };
 
-        let scaled = u256::shr(unscaled_product, 64); 
 
-        FixedPoint64 {value: u256::as_u128(scaled)}
+        let upper_a = ((a.value >> RESOLUTION) as u64);
+        let upper_b = ((b.value >> RESOLUTION) as u64);
+        let lower_a = ((a.value & LOWER_MASK) as u64);
+        let lower_b = ((b.value & LOWER_MASK) as u64);
+
+        // partial products
+        let upper: u128 = (upper_a as u128) * (upper_b as u128);
+        let lower: u128 = (lower_a as u128) * (lower_b as u128);
+        let uppera_lowerb: u128 = (upper_a as u128) * (lower_b as u128);
+        let upperb_lowera: u128 = (upper_b as u128) * (lower_a as u128);
+
+        assert!(upper <= U64_MAX, 0);
+
+        // handles overflow, above can prob be removed?
+        let sum = (upper << RESOLUTION) + uppera_lowerb + upperb_lowera + (lower >> RESOLUTION);
+
+        // old
+        // let unscaled_product = u256::mul(
+        //     u256::from_u128(a.value),
+        //     u256::from_u128(b.value)
+        // );
+
+        // let scaled = u256::shr(unscaled_product, 64); 
+
+        FixedPoint64 {value: sum}
+    }
+
+    /// @notice divide a `FixedPoint64` by another `FixedPoint64`
+    public fun divide(a: FixedPoint64, b: FixedPoint64): FixedPoint64 {
+        assert!(b.value > 0, 0);
+        if (a.value == b.value) {
+            return FixedPoint64 {value: 0x8000000000000000 }
+        };
+        if (a.value <= U64_MAX){
+            let value: u128 = (a.value << RESOLUTION) / b.value; 
+            return FixedPoint64 { value }
+        };
+        let value = math_u128::mul_div(Q64, a.value, b.value);
+        FixedPoint64 { value }
     }
 
     /// @notice Casts raw `u128` value to `FixedPoint64` 
