@@ -6,8 +6,13 @@ module movemate::fixed_point64 {
     use std::errors;
     use movemate::u256::{Self};
 
+    use std::debug;
+
     /// @dev max value a `u128` can take.
     const U128_MAX: u128 = 340282366920938463463374607431768211455;
+
+    /// @dev max value a `u64` can take.
+    const U64_MAX: u128 = 18446744073709551615;
 
     /// @dev demoninator provided was zero
     const EDENOMINATOR:u64 = 0;
@@ -59,13 +64,22 @@ module movemate::fixed_point64 {
 
     /// @notice divide a u128 integer by a `FixedPoint64` multiplier
     public fun divide_u128(val: u128, divisor: FixedPoint64): u128 {
-        debug::print(&divisor);
         let scaled_div = u256::shl(u256::from_u128(val), 64);
-        debug::print(&scaled_div);
         let quotient = u256::as_u128(u256::div(scaled_div, u256::from_u128(divisor.value)));
-        debug::print(&quotient);
 
         quotient
+    }
+
+    /// @notice multiply a `FixedPoint64` by another `FixedPoint64`.
+    public fun multiply(a: FixedPoint64, b: FixedPoint64): FixedPoint64 {
+        let unscaled_product = u256::mul(
+            u256::from_u128(a.value),
+            u256::from_u128(b.value)
+        );
+
+        let scaled = u256::shr(unscaled_product, 64); 
+
+        FixedPoint64 {value: u256::as_u128(scaled)}
     }
 
     /// @notice Casts raw `u128` value to `FixedPoint64` 
@@ -160,5 +174,33 @@ module movemate::fixed_point64 {
         let divisor = create_from_rational(2, 1);
         // assert test result is zero
         assert!(divide_u128(1, divisor) == 0, 1);
+    }
+
+    #[test]
+    fun test_fixed_by_fixed_mul() {
+        let a = create_from_rational(5, 1);
+        let b = create_from_rational(1, 2);
+
+        assert!(multiply(a, b) == multiply(b, a), 2);
+        // 2.5 is 0000 0000 0000 0002 8000 0000 0000 0000 in fixedpoint rep
+        assert!(get_raw_value(multiply(a, b)) == 0x28000000000000000, 2);
+
+        let zero = create_from_rational(0,1);
+        assert!(get_raw_value(multiply(a, zero)) == 0, 2);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 0)]
+    fun test_fixed_by_fixed_overflow() {
+        let max_one = create_from_rational(U64_MAX, 1);
+        let multiplier = create_from_rational(2, 1);
+        multiply(max_one, multiplier);
+    }
+
+    #[test]
+    fun test_fixed_by_fixed_limits() {
+        let max_one = create_from_rational(U64_MAX, 1);
+        let multiplier = create_from_rational(1, U64_MAX);
+        assert!(get_raw_value(multiply(max_one, multiplier)) == 0xFFFFFFFFFFFFFFFF, 1);
     }
 }
