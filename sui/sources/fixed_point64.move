@@ -107,14 +107,6 @@ module movemate::fixed_point64 {
         // handles overflow, above can prob be removed?
         let sum = (upper << RESOLUTION) + uppera_lowerb + upperb_lowera + (lower >> RESOLUTION);
 
-        // old
-        // let unscaled_product = u256::mul(
-        //     u256::from_u128(a.value),
-        //     u256::from_u128(b.value)
-        // );
-
-        // let scaled = u256::shr(unscaled_product, 64); 
-
         FixedPoint64 {value: sum}
     }
 
@@ -136,6 +128,31 @@ module movemate::fixed_point64 {
     public fun create_from_raw_value(value: u128): FixedPoint64 {
         FixedPoint64 { value }
     }
+
+    /// @notice take a FixedPoint64 to a integer power. fails on overflow within the multiply function.
+    /// lossy between 0/1 and 40 bits
+    public fun pow(a: FixedPoint64, b: u128): FixedPoint64 {
+        let result = create_from_rational(1, 1);
+        while (b > 0) {
+            result = multiply(result, a);
+            b = b - 1;
+        };
+        result
+    }
+
+
+    /// @notice power exponential function in embedded system
+    /// https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6521197
+    // public fun exp(a: FixedPoint64, b: FixedPoint64) {
+
+    // }
+
+    /// @notice take the reciprocal of a `FixedPoint64`
+    public fun reciprocal(a: FixedPoint64): FixedPoint64{
+        assert!(a.value != 0, 0);
+        assert!(a.value != 1, 1);
+        FixedPoint64 { value: Q64 / a.value }
+    }   
 
     /// @notice Get value in `FixedPoint64` 
     public fun get_raw_value(num: FixedPoint64): u128 {
@@ -259,6 +276,21 @@ module movemate::fixed_point64 {
         let a = create_from_rational(5, 1);
         let b = create_from_rational(2, 1);
 
-        divide(a, b);
+        assert!(get_raw_value(divide(a, b)) == 0x28000000000000000, 2);
+    }
+
+    #[test]
+    fun test_pow() {
+        let a = create_from_rational(3, 2);
+        let b: u128 = 8; 
+        assert!(get_raw_value(pow(a, b)) == 0x19A100000000000000, 0);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 0)]
+    fun test_overflow_pow() {
+        let a = create_from_rational(100, 1);
+        let b = 200;
+        pow(a, b);
     }
 }
