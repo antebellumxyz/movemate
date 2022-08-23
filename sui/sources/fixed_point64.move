@@ -72,6 +72,10 @@ module movemate::fixed_point64 {
         product
     }
 
+    public fun add(a: FixedPoint64, b: FixedPoint64): FixedPoint64 {
+        FixedPoint64 { value: a.value + b.value }
+    }
+
     /// @notice divide a u128 integer by a `FixedPoint64` multiplier
     public fun divide_u128(val: u128, divisor: FixedPoint64): u128 {
         let scaled_div = u256::shl(u256::from_u128(val), 64);
@@ -248,5 +252,13 @@ module movemate::fixed_point64 {
         let max_one = create_from_rational(U64_MAX, 1);
         let multiplier = create_from_rational(1, U64_MAX);
         assert!(get_raw_value(multiply(max_one, multiplier)) == 0xFFFFFFFFFFFFFFFF, 1);
+    }
+    
+    #[test]
+    fun test_fxf_divide() {
+        let a = create_from_rational(5, 1);
+        let b = create_from_rational(2, 1);
+
+        divide(a, b);
     }
 }
