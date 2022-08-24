@@ -49,6 +49,12 @@ module movemate::s32x32 {
     public fun sub(a: FixedPoint32, b: FixedPoint32): FixedPoint32 {
         FixedPoint32 {value: i64::sub(&a.value, &b.value) } 
     }
+    public fun mul(a: FixedPoint32, b: FixedPoint32): FixedPoint32 {
+        FixedPoint32 {value: i64::mul(&a.value, &b.value) } 
+    }
+    public fun div(a: FixedPoint32, b: FixedPoint32): FixedPoint32 {
+        FixedPoint32 {value: i64::div(&a.value, &b.value) } 
+    }
 
 
     #[test]
