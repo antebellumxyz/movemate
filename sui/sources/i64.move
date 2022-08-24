@@ -47,6 +47,10 @@ module movemate::i64 {
         x.bits
     }
 
+    public fun as_raw_bits(x: &I64): u64 {
+        x.bits
+    }
+
     /// @notice Whether or not `x` is equal to 0.
     public fun is_zero(x: &I64): bool {
         x.bits == 0
