@@ -1,6 +1,7 @@
 module movemate::s32x32 {
     use movemate::i64::{Self, I64};
-    use std::debug;
+    //use std::debug;
+    use movemate::i128::{Self};
 
     struct FixedPoint32 has copy, drop, store { value: I64 }
     
@@ -28,8 +29,8 @@ module movemate::s32x32 {
         let b = i64::as_raw_bits(&denominator);
  
         // zero out first bit that holds sign info, siu
-        let a2 = a & 0x7FFFFFFF;
-        let b2 = b & 0x7FFFFFFF;
+        let a2 = a & 0x7FFFFFFFFFFFFFFF;
+        let b2 = b & 0x7FFFFFFFFFFFFFFF;
 
         let a3 = (a2 as u128) << 64;
         let b3 = (b2 as u128) << 32;
@@ -50,18 +51,107 @@ module movemate::s32x32 {
         FixedPoint32 {value: i64::sub(&a.value, &b.value) } 
     }
     public fun mul(a: FixedPoint32, b: FixedPoint32): FixedPoint32 {
-        FixedPoint32 {value: i64::mul(&a.value, &b.value) } 
+
+        // should cast up into i128
+        let a1 = i128::fromI64(&a.value);
+        let b1 = i128::fromI64(&b.value);
+
+        let r = i128::mul(&a1, &b1);
+
+        let sign = i128::is_neg(&r);
+
+        let r1 = i128::as_raw_bits(&i128::abs(&r));
+
+        if (sign) {
+            return FixedPoint32 {value: i64::neg_from(((r1 >> 32) as u64))} 
+        };
+
+        FixedPoint32 {value: i64::from(((r1 >> 32) as u64))} 
     }
+
     public fun div(a: FixedPoint32, b: FixedPoint32): FixedPoint32 {
-        FixedPoint32 {value: i64::div(&a.value, &b.value) } 
+        assert!(i64::is_zero(&b.value) != true, 0);
+
+        let n_sign = i64::is_neg(&a.value);
+        let d_sign = i64::is_neg(&b.value);
+        
+        // true if pos
+        let sign = (n_sign && d_sign) || (!n_sign && !d_sign);
+
+        let a1 = i64::as_raw_bits(&a.value);
+        let b1 = i64::as_raw_bits(&b.value);
+        //debug::print(&a1);
+        //debug::print(&b1);
+        // zero out first bit that holds sign info, siu
+        let a2 = a1 & 0x7FFFFFFFFFFFFFFF;
+        let b2 = b1 & 0x7FFFFFFFFFFFFFFF;
+
+        //debug::print(&a2);
+        //debug::print(&b2);
+
+        let a3 = i128::from((a2 as u128) << 32);
+        let b3 = i128::from((b2 as u128));
+        //debug::print(&a3);
+        //debug::print(&b3);
+
+        let result = i128::as_raw_bits(&i128::div(&a3, &b3));
+        if (!sign) {
+            return FixedPoint32 {value: i64::neg_from((result as u64))}
+        };
+
+        FixedPoint32{value: i64::from((result as u64))}
+    }
+
+    public fun abs(a: FixedPoint32): FixedPoint32 {
+        FixedPoint32 {value: i64::abs(&a.value)}
+    }
+
+    public fun neg(a: FixedPoint32): FixedPoint32 {
+        FixedPoint32 {value: i64::neg(&a.value)}
+    }
+    
+    public fun get_raw_bits(a: FixedPoint32): u64 {
+        i64::as_raw_bits(&a.value)
     }
 
 
     #[test]
-    fun test_fromInt(){
-        let a = i64::from(20);
-        let b = i64::neg_from(10);
-        let z = create_from_rational(a, b);
-        debug::print(&z);
+    fun test_create_from_rational(){
+        //let a = i64::from(20);
+        //let b = i64::neg_from(10);
+        //let z = create_from_rational(a, b);
+        
+        //debug::print(&z);
+    }
+
+    #[test]
+    fun test_mul() {
+        let z = create_from_rational(i64::from(4), i64::from(1));
+        let x = create_from_rational(i64::from(4), i64::neg_from(2)); 
+        let result = mul(z, x);
+        assert!(get_raw_bits(result) == get_raw_bits(create_from_rational(i64::neg_from(8), i64::from(1))), 0);
+
+        let z = create_from_rational(i64::from(1), i64::from(2));
+        let x = create_from_rational(i64::from(4), i64::neg_from(2)); 
+        let result = mul(z, x);
+        assert!(get_raw_bits(result) == get_raw_bits(create_from_rational(i64::neg_from(1), i64::from(1))), 0);
+
+        let z = create_from_rational(i64::from(1), i64::neg_from(2));
+        let x = create_from_rational(i64::from(4), i64::neg_from(2)); 
+        let result = mul(z, x);
+        assert!(get_raw_bits(result) == get_raw_bits(create_from_rational(i64::from(1), i64::from(1))), 0);
+
+        let z = create_from_rational(i64::from(1), i64::from(2));
+        let x = create_from_rational(i64::from(4), i64::from(2)); 
+        let result = mul(z, x);
+        assert!(get_raw_bits(result) == get_raw_bits(create_from_rational(i64::from(1), i64::from(1))), 0);
+    }
+
+    #[test]
+    fun test_div() {
+        let z = create_from_rational(i64::from(4), i64::from(1));
+        let x = create_from_rational(i64::from(8), i64::neg_from(1)); 
+        let result = div(z, x);
+        assert!(get_raw_bits(result) == get_raw_bits(create_from_rational(i64::neg_from(1), i64::from(2))), 0);
     }
 }

@@ -3,6 +3,7 @@
 /// @dev TODO: Pass in params by value instead of by ref to make usage easier?
 module movemate::i128 {
     use std::errors;
+    use movemate::i64::{Self, I64};
 
     /// @dev Maximum I128 value as a u128.
     const MAX_I128_AS_U128: u128 = (1 << 127) - 1;
@@ -49,6 +50,15 @@ module movemate::i128 {
 
     public fun as_raw_bits(x: &I128): u128 {
         x.bits
+    }
+
+    public fun fromI64(x: &I64): I128 {
+        if (i64::is_neg(x)){
+            return neg_from((i64::as_u64(&i64::abs(x)) as u128))
+        };
+
+        return I128 {bits: (i64::as_u64(x) as u128)}
+
     }
 
     /// @notice Whether or not `x` is equal to 0.
