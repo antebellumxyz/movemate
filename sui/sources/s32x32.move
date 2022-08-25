@@ -117,22 +117,27 @@ module movemate::s32x32 {
 
     // Calculate the sqrt(x) rounding down, where x is unsigned 64 bit int num
     public fun sqrtu (a: u128): u64 {
-        debug::print(&a);
+
         let xx: u128 = a;
         let r: u128 = 1;
-        if (xx >= 0x10000000000000000) { xx >> 64; r << 32; };
-        if (xx >= 0x100000000) { xx >> 32; r << 16; };
-        if (xx >= 0x10000) { xx >> 16; r << 8; };
-        if (xx >= 0x100) { xx >> 8; r << 4; };
-        if (xx >= 0x10) { xx >> 4; r << 2; };
-        if (xx >= 0x8) { r << 1; };
+        
+        if (xx >= 0x10000000000000000) { xx = xx >> 64; r = r << 32; };
+        if (xx >= 0x100000000) { xx = xx >> 32; r = r << 16; };
+
+        if (xx >= 0x10000) {xx = xx >> 16; r = r << 8; };
+        if (xx >= 0x100) { xx = xx >> 8; r = r << 4; };
+
+        if (xx >= 0x10) { xx = xx >> 4; r = r << 2; };
+
+        if (xx >= 0x8) { r = r << 1; };
+
         r = (r + a / r) >> 1;
         r = (r + a / r) >> 1;
         r = (r + a / r) >> 1;
         r = (r + a / r) >> 1;
         r = (r + a / r) >> 1;
         r = (r + a / r) >> 1;
-        r = (r + a / r) >> 1; // Seven iterations should be enough
+
         let r1: u128 = a / r;
         if(r < r1)
         {
@@ -144,9 +149,14 @@ module movemate::s32x32 {
     public fun sqrt(a: FixedPoint32): FixedPoint32 {
         assert!(i64::is_zero(&a.value) != true, 0);
         assert!(i64::is_neg(&a.value) != true, 0);
-        let c = (i64::as_raw_bits(&a.value) as u128);
-        let something = sqrtu(c >> 32);
-        FixedPoint32{value: i64::from((something as u64))}
+
+        let c = (i64::as_u64(&i64::abs(&a.value)) as u128);
+
+        debug::print(&c);
+
+        let something = sqrtu(c);
+        debug::print(&something);
+        FixedPoint32{value: i64::from((something as u64) << 16)}
     }
 
     #[test]
@@ -191,7 +201,9 @@ module movemate::s32x32 {
 
     #[test]
     fun test_sqrt() {
-        let z = create_from_rational(i64::from(64), i64::from(1));
+        let z = create_from_rational(i64::from(1), i64::from(69));
+        debug::print(&z);
+
         let result = sqrt(z);
         debug::print(&result);
     }
